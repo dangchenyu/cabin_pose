@@ -53,7 +53,7 @@ def main():
     model = eval('models.' + cfg.MODEL.NAME + '.get_pose_net')(
         cfg, is_train=False
     )
-    checkpoint = torch.load('C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\tools\\output\\mpii\\pose_hrnet\\w32_256x256_adam_lr1e-3\\6.pth' ,
+    checkpoint = torch.load('C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\tools\\output\\mpii\\pose_hrnet\\w32_256x256_adam_lr1e-3\\.pth' ,
                             map_location='cpu')
     if list(checkpoint['state_dict'].keys())[0].startswith('module.'):
         state_dict = {k[7:]: v for k, v in checkpoint['state_dict'].items()}
