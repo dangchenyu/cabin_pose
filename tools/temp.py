@@ -17,7 +17,7 @@ def move_pic(label_path):
         if os.path.isfile(new_path):
             if 'jpg' in new_path:
                 shutil.copy(new_path,
-                            'C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\data\\cabin\\images')
+                            'C:\\Users\\DELL\\PycharmProjects\\data_processing\\images_objects\\')
 
 
 def delete_pic(pic_path):
@@ -30,6 +30,32 @@ def delete_pic(pic_path):
                 if 'jpg' in i:
                     if basename in i:
                         os.remove(i)
+def make_video_from_images(img_paths, outvid_path, fps=20, size=None,
+               is_color=True, format="XVID"):
+    from cv2 import VideoWriter, VideoWriter_fourcc, imread, resize
+    fourcc = VideoWriter_fourcc(*format)
+    vid = None
+    img_list=os.listdir(img_paths)
+    img_list.sort()
+    for img in img_list:
+        img_path=img_paths+img
+        if not os.path.exists(img_path):
+            raise FileNotFoundError(img_path)
+        img = imread(img_path)
+        if img is None:
+            print(img_path)
+            continue
+        if vid is None:
+            if size is None:
+                size = img.shape[1], img.shape[0]
+            vid = VideoWriter(outvid_path, fourcc, float(fps), size, is_color)
+
+        if size[0] != img.shape[1] and size[1] != img.shape[0]:
+            img = resize(img, size)
+        vid.write(img)
+    vid.release()
+    return vid
+
 
 
 def delete_json(json_file):
@@ -81,8 +107,9 @@ if __name__ == '__main__':
                  'NJ_Y_1_70_20190815_081500_f1c6ee45.avi',
                  'NJ_Y_1_70_20190905_120526_0b13801c.avi',
                  'NJ_Y_1_70_20191013_160139_cb79ae51.avi']
-    # move_pic('C:\\Users\\DELL\\Downloads\\#3960')
-    delete_pic('C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\data\\cabin\\images')
+    # make_video_from_images('D:\\cabin_test\\5_10\\','D:\\cabin_test\\5_10.mp4')
+    move_pic('I:\\#3802imgs')
+    # delete_pic('C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\data\\cabin\\images')
     # delete_json(
-        # 'C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\data\\cabin\\annot\\cabin_train.json')
+    #     'C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\data\\cabin\\annot\\cabin_train.json')
     # count_num("C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\data\\cabin\\annot\\temp.json")

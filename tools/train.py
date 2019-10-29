@@ -127,21 +127,17 @@ def main():
     ).to(device)
 
     # Data loading code
-    normalize = transforms.Normalize(
-        mean=[0.485], std=[0.229]
-    )
+
     train_dataset = eval('dataset.' + cfg.DATASET.DATASET)(
         cfg, cfg.DATASET.ROOT, cfg.DATASET.TRAIN_SET, True,
         transforms.Compose([
-            transforms.ToTensor(),
-            normalize,
+            transforms.ToTensor()
         ])
     )
     valid_dataset = eval('dataset.' + cfg.DATASET.DATASET)(
         cfg, cfg.DATASET.ROOT, cfg.DATASET.TEST_SET, False,
         transforms.Compose([
-            transforms.ToTensor(),
-            normalize,
+            transforms.ToTensor()
         ])
     )
     if device == 'cuda':

@@ -28,11 +28,11 @@ MODEL:
   PRETRAINED: 'models/pytorch/imagenet/hrnet_w32-36af842e.pth'
   TARGET_TYPE: gaussian
   IMAGE_SIZE:
-  - 160
-  - 160
+  - 192
+  - 192
   HEATMAP_SIZE:
-  - 40
-  - 40
+  - 48
+  - 48
   SIGMA: 2
   EXTRA:
     PRETRAINED_LAYERS:

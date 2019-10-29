@@ -138,10 +138,11 @@ class JointsDataset(Dataset):
             trans,
             (int(self.image_size[0]), int(self.image_size[1])),
             flags=cv2.INTER_LINEAR)
-        cv2.imshow('test', input)
-        cv2.waitKey()
+        # cv2.imshow('test', input)
+        # cv2.waitKey()
 
         input = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+        input = (input/255).astype(np.float32)
         if self.transform:
             input = self.transform(input)
         for i in range(self.num_joints):
