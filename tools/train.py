@@ -215,14 +215,14 @@ def main():
         # else:
         #     best_model = False
 
-        logger.info('=> saving checkpoint to {}'.format(final_output_dir))
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'model': cfg.MODEL.NAME,
-            'state_dict': model.state_dict(),
-            'best_state_dict': model.module.state_dict(),
-            'optimizer': optimizer.state_dict(),
-        }, best_model, final_output_dir)
+        # logger.info('=> saving checkpoint to {}'.format(final_output_dir))
+        # save_checkpoint({
+        #     'epoch': epoch + 1,
+        #     'model': cfg.MODEL.NAME,
+        #     'state_dict': model.state_dict(),
+        #     'best_state_dict': model.module.state_dict(),
+        #     'optimizer': optimizer.state_dict(),
+        # }, best_model, final_output_dir)
 
     final_model_state_file = os.path.join(
         final_output_dir, 'final_state.pth'

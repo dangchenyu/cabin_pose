@@ -61,7 +61,7 @@ class JointsDataset(Dataset):
     def evaluate(self, cfg, preds, output_dir, *args, **kwargs):
         raise NotImplementedError
 
-    def half_body_transform(self, joints, joints_vis):
+    def half_body_transform(self, joints):
         if len(joints) < 2:
             return None, None
 
@@ -105,28 +105,31 @@ class JointsDataset(Dataset):
             data_numpy = cv2.imread(
                 image_file, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION
             )
-        # cv2.imshow('test1', data_numpy)
-        # cv2.waitKey()
+
         if data_numpy is None:
             logger.error('=> fail to read {}'.format(image_file))
             raise ValueError('Fail to read {}'.format(image_file))
+        scale_x = self.image_size[0] / data_numpy.shape[1]
+        scale_y = self.image_size[1] / data_numpy.shape[0]
+        data_numpy = cv2.resize(data_numpy, (int(self.image_size[0]), int(self.image_size[1])))
 
         joints = db_rec['joints_3d']
-        joints_vis = db_rec['joints_3d_vis']
+        joints_vis = db_rec['joints_3d_vis'].astype(np.float32)
+        joints_vis =np.ones_like(joints_vis)
 
+        joints = (np.multiply(joints, [scale_x, scale_y, 0])).astype(np.float32)
         score = db_rec['score'] if 'score' in db_rec else 1
-
         c, s = self.half_body_transform(
-            joints, joints_vis
+            joints
         )
 
         sf = self.scale_factor
         rf = self.rotation_factor
-        s = s * np.clip(np.random.randn() * sf + 1, 1.25, 1.5)
+        # s = s * np.clip(np.random.randn() * sf + 1, 1.25, 1.5)
         r = np.clip(np.random.randn() * rf, -rf * 2, rf * 2) \
-            if random.random() <= 0.6 else 0
+            if random.random() <= 0.5 else 0
 
-        if self.flip and random.random() <= 0.5:
+        if self.flip and random.random() <= 0.3:
             data_numpy = data_numpy[:, ::-1, :]
             joints, joints_vis = fliplr_joints(
                 joints, joints_vis, data_numpy.shape[1], self.flip_pairs)
@@ -137,24 +140,26 @@ class JointsDataset(Dataset):
             data_numpy,
             trans,
             (int(self.image_size[0]), int(self.image_size[1])),
-            flags=cv2.INTER_LINEAR)
-        # cv2.imshow('test', input)
-        # cv2.waitKey()
+            flags=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_REPLICATE)
 
-        input = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
-        input = (input/255).astype(np.float32)
-        if self.transform:
-            input = self.transform(input)
-        for i in range(self.num_joints):
-            if joints_vis[i, 0] > 0.0:
-                joints[i, 0:2] = affine_transform(joints[i, 0:2], trans)
-
+        for x in range(self.num_joints):
+            joints[x, 0:2] = affine_transform(joints[x, 0:2], trans)
         target, target_weight = self.generate_target(joints, joints_vis)
-        # cv2.imshow('test3', target[0])
-        # cv2.waitKey()
+
+        input_gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+        # for i in range(10):
+        #     cv2.circle(input, (int(joints[i][0]), int(joints[i][1])), 3, (0, 0, 0), )
+        #     cv2.imshow('test3', input)
+        #     cv2.waitKey()
+        input_to_model = (input_gray / 256).astype(np.float32)
+
+        if self.transform:
+            input_to_model = self.transform(input_to_model)
         target = torch.from_numpy(target)
 
         target_weight = torch.from_numpy(target_weight)
+
         meta = {
             'image': image_file,
             'filename': filename,
@@ -167,7 +172,7 @@ class JointsDataset(Dataset):
             'score': score
         }
 
-        return input, target, target_weight, meta
+        return input_to_model, target, target_weight, meta
 
     def select_data(self, db):
         db_selected = []

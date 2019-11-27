@@ -17,7 +17,7 @@ def move_pic(label_path):
         if os.path.isfile(new_path):
             if 'jpg' in new_path:
                 shutil.copy(new_path,
-                            'C:\\Users\\DELL\\PycharmProjects\\data_processing\\images_objects\\')
+                            'C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\data\\cabin\\images')
 
 
 def delete_pic(pic_path):
@@ -108,7 +108,7 @@ if __name__ == '__main__':
                  'NJ_Y_1_70_20190905_120526_0b13801c.avi',
                  'NJ_Y_1_70_20191013_160139_cb79ae51.avi']
     # make_video_from_images('D:\\cabin_test\\5_10\\','D:\\cabin_test\\5_10.mp4')
-    move_pic('I:\\#3802imgs')
+    move_pic('H:\\#4417imgs')
     # delete_pic('C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\data\\cabin\\images')
     # delete_json(
     #     'C:\\Users\\DELL\\PycharmProjects\\deep-high-resolution-net.pytorch\\data\\cabin\\annot\\cabin_train.json')
