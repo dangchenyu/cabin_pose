@@ -171,7 +171,6 @@ def main():
             pin_memory=cfg.PIN_MEMORY)
 
     best_perf = 0.0
-    best_model = False
     last_epoch = -1
     optimizer = get_optimizer(cfg, model)
     begin_epoch = cfg.TRAIN.BEGIN_EPOCH
@@ -204,25 +203,25 @@ def main():
         lr_scheduler.step()
 
         # evaluate on validation set
-        # perf_indicator = validate(
-        #     cfg, valid_loader, valid_dataset, model, criterion,
-        #     final_output_dir, tb_log_dir, writer_dict
-        # )
+        perf_indicator = validate(
+            cfg, valid_loader, valid_dataset, model, criterion,
+            final_output_dir, tb_log_dir, writer_dict
+        )
 
-        # if perf_indicator >= best_perf:
-        #     best_perf = perf_indicator
-        #     best_model = True
-        # else:
-        #     best_model = False
+        if perf_indicator >= best_perf:
+            best_perf = perf_indicator
+            logger.info('=> saving checkpoint to {}, Accuracy {:.3f}'.format(final_output_dir,best_perf))
+            best_model = True
+        else:
+            best_model = False
 
-        # logger.info('=> saving checkpoint to {}'.format(final_output_dir))
-        # save_checkpoint({
-        #     'epoch': epoch + 1,
-        #     'model': cfg.MODEL.NAME,
-        #     'state_dict': model.state_dict(),
-        #     'best_state_dict': model.module.state_dict(),
-        #     'optimizer': optimizer.state_dict(),
-        # }, best_model, final_output_dir)
+        save_checkpoint({
+            'epoch': epoch + 1,
+            'model': cfg.MODEL.NAME,
+            'state_dict': model.state_dict(),
+            'best_state_dict': model.module.state_dict(),
+            'optimizer': optimizer.state_dict(),
+        }, best_model, final_output_dir)
 
     final_model_state_file = os.path.join(
         final_output_dir, 'final_state.pth'

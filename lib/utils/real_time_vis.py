@@ -52,40 +52,40 @@ def parse_args():
 
 
 def main(path, smooth_frames, low_conf_frames, label_path, thres):
-    if 'mp4' in path:
-        cam = cv2.VideoCapture(path)
-        joints_queue = []
-        score = []
-        i = 0
-        while True:
-            _, origin = cam.read()
-            if not _:
-                break
-            input, lt, rb = get_patch(origin, label_path[i])
-            if i % 2 == 0:
+    file_list = os.listdir(path)
+    for file in file_list:
+        if 'mp4' in file:
+            cam = cv2.VideoCapture(path)
+            joints_queue = []
+            score = []
+            i = 0
+            while True:
+                _, origin = cam.read()
+                if not _:
+                    break
+                input, lt, rb = get_patch(origin, label_path[i])
+                if i > 400:
 
-                pred, conf = get_pred(input)
-                last_pred = pred.copy()
-                if len(joints_queue) < smooth_frames:
-                    joints_queue.append(pred)
-                else:
-                    joints_queue = update_queue(joints_queue, pred)
-                if len(score) < low_conf_frames:
-                    score.append(conf)
-                else:
-                    score = update_queue(score, conf)
+                    pred, conf = get_pred(input)
+                    last_pred = pred.copy()
+                    if len(joints_queue) < smooth_frames:
+                        joints_queue.append(pred)
+                    else:
+                        joints_queue = update_queue(joints_queue, pred)
+                    if len(score) < low_conf_frames:
+                        score.append(conf)
+                    else:
+                        score = update_queue(score, conf)
 
-                show_result(input, origin, lt, rb, joints_queue, pred, thres, score, i)
+                    show_result(input, origin, lt, rb, joints_queue, pred, thres, score, i)
 
-            else:
-                show_result(input, origin, lt, rb, joints_queue, last_pred, thres, score, i)
-            i += 1
-    else:
-        img_list = os.listdir(path)
-
-        for img in img_list:
-            img_data = cv2.imread(path + img, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
-            show_result(img_data, img_data, [0, 0], [0, 0])
+                # else:
+                #     show_result(input, origin, lt, rb, joints_queue, last_pred, thres, score, i)
+                i += 1
+        else:
+            img_data = cv2.imread(path + file, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
+            pred, conf = get_pred(img_data)
+            show_result(img_data, img_data, (0,0), (img_data.shape[1],img_data.shape[0]), pred, pred, thres, conf, 0,if_video=False)
 
 
 def get_patch(img, label_path):
@@ -145,15 +145,15 @@ def get_ava(joints_queue, lt, scale):
     return joints_ava
 
 
-def get_new(joints_ava, pred, thres):
-    distance = np.sqrt(np.square(joints_ava - pred).sum(2))
+def get_new(joints_queue,predicted_points, joints_ori,pred, thres):
+    distance = np.sqrt(np.square(joints_queue - pred).sum(2))
     wrong_ind = np.where(distance > thres)
-    pred[wrong_ind] = joints_ava[wrong_ind]
+    pred[wrong_ind]=predicted_points[wrong_ind]
     return pred
 
 
 def show_result(img_data, origin, left_top, right_bottom, joints_queue, pred, thres, score, frame_num,
-                if_origin=True):
+                if_video=True):
     score_array = np.array(score)
     show = origin.copy()
 
@@ -161,37 +161,47 @@ def show_result(img_data, origin, left_top, right_bottom, joints_queue, pred, th
     size_y = img_data.shape[0]
     scale_x = size_x / cfg.MODEL.IMAGE_SIZE[1] * 4
     scale_y = size_y / cfg.MODEL.IMAGE_SIZE[0] * 4
-    white = np.zeros([192, 192, 3])
-    white[:, :, 0] = 0
-    white[:, :, 1] = 0
-    white[:, :, 2] = 0
-    predicted_points=predict_points(joints_queue,left_top,[scale_x,scale_y])
-    joints_ava = get_ava(joints_queue, left_top, [scale_x, scale_y])
-    # combine_predict_ava=(np.add(predicted_points,joints_ava)/2.0).astype(np.int32)
-    pred = (pred * [scale_x, scale_y]).astype(int)
-    pred = np.add(pred, np.array(left_top))
-    pred = get_new(joints_ava, pred, thres)
-    # pred = get_new(combine_predict_ava, pred, thres)
 
+    if if_video:
+        predicted_points=predict_points(joints_queue,left_top,[scale_x,scale_y])
+        joints_ava = get_ava(joints_queue, left_top, [scale_x, scale_y])
+        combine_predict_ava=(np.add(predicted_points,joints_ava)/2.0).astype(np.int32)
 
-    if if_origin:
-        show = show
+        pred = (pred * [scale_x, scale_y]).astype(int)
+        pred = np.add(pred, np.array(left_top))
+        # pred = get_new(joints_ava, pred, thres)
+        pred = get_new(joints_ava,predicted_points,joints_queue, pred, thres)
+        point_set = np.array([[0, 1], [2, 3], [2, 9],
+                              [3, 4], [5, 6], [8, 7],
+                              [9, 8]])
+
+        chosen_points = np.logical_and((score_array[:, point_set[:, 0]] > 0.5).all(axis=0),
+                                       (score_array[:, point_set[:, 1]] > 0.5).all(axis=0))
+        low_conf_ind = np.where((score_array > 0.5).any(axis=0))[0]
+
+        # cv2.rectangle(show, tuple(left_top), tuple(right_bottom), (0, 255, 0), 2)
+        #
+        #
+        show_lines(show, pred, chosen_points, point_set)
+
     else:
-        show = white
+        score_array=np.expand_dims(score_array,axis=0)
+        pred = (pred * [scale_x, scale_y]).astype(int)
+        point_set = np.array([[0, 1], [2, 3], [2, 9],
+                              [3, 4], [5, 6], [8, 7],
+                              [9, 8]])
 
-    point_set = np.array([[0, 1], [2, 3], [2, 9],
-                          [3, 4], [5, 6], [8, 7],
-                          [9, 8]])
+        chosen_points = np.logical_and((score_array[:, point_set[:, 0]] > 0.5).all(axis=0),
+                                       (score_array[:, point_set[:, 1]] > 0.5).all(axis=0))
+        low_conf_ind = np.where((score_array < 0.5).any(axis=0))[0]
+        draw_points(show, pred,low_conf_ind)
 
-    chosen_points = np.logical_and((score_array[:, point_set[:, 0]] > 0.5).any(axis=0),
-                                   (score_array[:, point_set[:, 1]] > 0.5).any(axis=0))
-    low_conf_ind = np.where((score_array > 0.5).any(axis=0))[0]
 
-    # cv2.rectangle(show, tuple(left_top), tuple(right_bottom), (0, 255, 0), 2)
-    #
-    #
-    show_lines(show, pred, chosen_points, point_set)
+
+
+
     # cv2.imwrite("D:\\cabin_test\\internel_1\\{:05d}.jpg".format(frame_num),show)
+
 
 
 def show_lines(img, pred, chosen_points, points):
@@ -207,9 +217,15 @@ def show_lines(img, pred, chosen_points, points):
             continue
         else:
             cv2.line(img, tuple(pred[0][point[0]]), tuple(pred[0][point[1]]), (100, 100, 100), thickness=4)
-            cv2.imshow('test', img)
-            cv2.waitKey(1)
-
+    cv2.imshow('test', img)
+    cv2.waitKey(0)
+def draw_points(img,pred,low_conf_ind):
+    for i in range(10):
+        if i in low_conf_ind:
+            continue
+        cv2.circle(img,(pred[0][i][0],pred[0][i][1]),3,(0,255,0),-1)
+    cv2.imshow('test',img)
+    cv2.waitKey(0)
 
 if __name__ == '__main__':
     args = parse_args()
@@ -218,7 +234,7 @@ if __name__ == '__main__':
         cfg, is_train=False
     )
     checkpoint = torch.load(
-        'D:\\cabin_test\\ckpts\\13.pth',
+        'D:\\cabin_test\\ckpts\\20.pth',
         map_location='cpu')
     try:
         if list(checkpoint['state_dict'].keys())[0].startswith('module.'):
@@ -232,4 +248,4 @@ if __name__ == '__main__':
 
     o.close()
     # main('D:\cabin_test\\back\\',label_list)
-    main('D:\\cabin_test\\test.mp4', 5, 3, label_list, 10)
+    main('C:\\Users\\DELL\\Desktop\\test\\', 3, 3, label_list, 50)

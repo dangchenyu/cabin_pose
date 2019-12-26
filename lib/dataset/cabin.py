@@ -23,25 +23,34 @@ class CabinDataset(JointsDataset):
 
     def _get_db(self):
         # create train/val split
-        file_name = os.path.join(
-            self.root, 'annot', 'cabin_train.json'
+        if self.is_train is True:
+            file_name = os.path.join(
+            self.root, 'annot', 'cabin_train_new.json'
         )
+        else :
+            file_name = os.path.join(
+                self.root, 'annot', 'cabin_test_new.json'
+            )
         with open(file_name) as anno_file:
             anno = json.load(anno_file)
 
         gt_db = []
         for a in anno:
             try:
+                joints = np.array(a['anno']['data']['point2d'])
+
                 image_name = a['image_name']
                 # Adjust center/scale slightly to avoid cropping limbs
                 # MPII uses matlab format, index is based 1,
                 # we should first convert to 0-based index
-                visible = a['annotations'][0]['anno'][0]['data']['visible']
+
+                visible = a['anno']['data']['visible']
                 visible = [0 if x == 3 else x for x in visible]
                 joints_3d = np.zeros((self.num_joints, 3), dtype=np.float)
                 joints_3d_vis = np.zeros((self.num_joints, 3), dtype=np.float)
+
                 if self.image_set != 'test':
-                    joints = np.array(a['annotations'][0]['anno'][0]['data']['point2d'])
+
                     joints_vis = np.array(visible)
                     assert len(joints) == self.num_joints, \
                         'joint num diff: {} vs {}'.format(len(joints),
@@ -60,7 +69,7 @@ class CabinDataset(JointsDataset):
                         'imgnum': 0,
                     }
                 )
-            except IndexError:
+            except:
                 continue
 
         return gt_db

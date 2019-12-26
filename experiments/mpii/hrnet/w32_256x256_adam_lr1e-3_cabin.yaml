@@ -53,8 +53,8 @@ MODEL:
       NUM_BRANCHES: 2
       BLOCK: BASIC
       NUM_BLOCKS:
-        - 4
-        - 4
+        - 2
+        - 2
       NUM_CHANNELS:
         - 32
         - 64
@@ -64,9 +64,9 @@ MODEL:
       NUM_BRANCHES: 3
       BLOCK: BASIC
       NUM_BLOCKS:
-        - 4
-        - 4
-        - 4
+        - 2
+        - 2
+        - 2
       NUM_CHANNELS:
         - 32
         - 64
@@ -77,10 +77,10 @@ MODEL:
       NUM_BRANCHES: 4
       BLOCK: BASIC
       NUM_BLOCKS:
-        - 4
-        - 4
-        - 4
-        - 4
+        - 2
+        - 2
+        - 2
+        - 2
       NUM_CHANNELS:
         - 32
         - 64

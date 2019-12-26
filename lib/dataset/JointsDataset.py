@@ -40,6 +40,7 @@ class JointsDataset(Dataset):
 
         self.scale_factor = cfg.DATASET.SCALE_FACTOR
         self.rotation_factor = cfg.DATASET.ROT_FACTOR
+        self.position_factor = cfg.DATASET.POS_FACTOR
         self.flip = cfg.DATASET.FLIP
         self.num_joints_half_body = cfg.DATASET.NUM_JOINTS_HALF_BODY
         self.prob_half_body = cfg.DATASET.PROB_HALF_BODY
@@ -105,19 +106,26 @@ class JointsDataset(Dataset):
             data_numpy = cv2.imread(
                 image_file, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION
             )
-
         if data_numpy is None:
             logger.error('=> fail to read {}'.format(image_file))
             raise ValueError('Fail to read {}'.format(image_file))
+        cv2.imshow(filename, data_numpy)
+        cv2.waitKey(0)
         scale_x = self.image_size[0] / data_numpy.shape[1]
         scale_y = self.image_size[1] / data_numpy.shape[0]
-        data_numpy = cv2.resize(data_numpy, (int(self.image_size[0]), int(self.image_size[1])))
+        # data_numpy = cv2.resize(data_numpy, (int(self.image_size[0]), int(self.image_size[1])))
 
         joints = db_rec['joints_3d']
         joints_vis = db_rec['joints_3d_vis'].astype(np.float32)
-        joints_vis =np.ones_like(joints_vis)
+        # joints_vis =np.ones_like(joints_vis)
 
-        joints = (np.multiply(joints, [scale_x, scale_y, 0])).astype(np.float32)
+        # joints = (np.multiply(joints, [scale_x, scale_y, 0])).astype(np.float32)
+        # for i in range(10):
+        #
+        #     cv2.circle(data_numpy, (int(joints[i][0]), int(joints[i][1])), 3, (255, 255, 255),-1)
+        #
+        # cv2.imshow('test3', data_numpy)
+        # cv2.waitKey(0)
         score = db_rec['score'] if 'score' in db_rec else 1
         c, s = self.half_body_transform(
             joints
@@ -125,7 +133,8 @@ class JointsDataset(Dataset):
 
         sf = self.scale_factor
         rf = self.rotation_factor
-        # s = s * np.clip(np.random.randn() * sf + 1, 1.25, 1.5)
+        s = s * np.clip(np.random.randn() * sf + 1, 1, 1.5)
+        c = c + np.clip(np.random.randn() * 50, -50, 50)
         r = np.clip(np.random.randn() * rf, -rf * 2, rf * 2) \
             if random.random() <= 0.5 else 0
 
@@ -136,22 +145,32 @@ class JointsDataset(Dataset):
             c[0] = data_numpy.shape[1] - c[0]
 
         trans = get_affine_transform(c, s, r, self.image_size)
-        input = cv2.warpAffine(
-            data_numpy,
-            trans,
-            (int(self.image_size[0]), int(self.image_size[1])),
-            flags=cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_REPLICATE)
+        if self.is_train:
+            input = cv2.warpAffine(
+                data_numpy,
+                trans,
+                (int(self.image_size[0]), int(self.image_size[1])),
+                flags=cv2.INTER_LINEAR,
+                borderMode=cv2.BORDER_REPLICATE)
+            for x in range(self.num_joints):
+                joints[x, 0:2] = affine_transform(joints[x, 0:2], trans)
+        else:
+            input = cv2.resize(data_numpy, (int(self.image_size[0]), int(self.image_size[1])))
+            joints = (np.multiply(joints, [scale_x, scale_y, 0])).astype(np.float32)
 
-        for x in range(self.num_joints):
-            joints[x, 0:2] = affine_transform(joints[x, 0:2], trans)
         target, target_weight = self.generate_target(joints, joints_vis)
-
-        input_gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
         # for i in range(10):
-        #     cv2.circle(input, (int(joints[i][0]), int(joints[i][1])), 3, (0, 0, 0), )
-        #     cv2.imshow('test3', input)
+        #     cv2.imshow('f',target[i])
         #     cv2.waitKey()
+        # for i in range(10):
+        #     cv2.circle(input, (int(joints[i][0]), int(joints[i][1])), 3, (255, 255, 255), -1)
+        #
+
+        input=self._brightness(input)
+        cv2.imshow('test3', input)
+        cv2.waitKey(0)
+        input_gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+
         input_to_model = (input_gray / 256).astype(np.float32)
 
         if self.transform:
@@ -206,6 +225,14 @@ class JointsDataset(Dataset):
         logger.info('=> num db: {}'.format(len(db)))
         logger.info('=> num selected db: {}'.format(len(db_selected)))
         return db_selected
+
+    def _brightness(self, image, min=0.7, max=1.5):
+        hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        random_br = np.random.uniform(min, max)
+        mask = hsv[:, :, 2] * random_br > 255
+        v_channel = np.where(mask, 255, hsv[:, :, 2] * random_br)
+        hsv[:, :, 2] = v_channel
+        return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
     def generate_target(self, joints, joints_vis):
         '''
